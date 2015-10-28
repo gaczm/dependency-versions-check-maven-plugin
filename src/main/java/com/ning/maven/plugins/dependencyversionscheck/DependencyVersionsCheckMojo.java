@@ -47,7 +47,6 @@ public class DependencyVersionsCheckMojo extends AbstractDependencyVersionsMojo
      */
     protected boolean failBuildInCaseOfConflict;
 
-
     protected void doExecute() throws Exception
     {
         LOG.info("Checking dependency versions");
@@ -142,8 +141,7 @@ public class DependencyVersionsCheckMojo extends AbstractDependencyVersionsMojo
 
     protected void logResolutionsForConflict(String  mainMessage,
                                              Map     resolutionsForArtifact,
-                                             Version resolvedVersion)
-      {
+                                             Version resolvedVersion) throws MojoFailureException {
           StringBuilder msgBuilder = new StringBuilder(mainMessage);
 
           msgBuilder.append("\n  Resolved version is ");
@@ -182,12 +180,11 @@ public class DependencyVersionsCheckMojo extends AbstractDependencyVersionsMojo
           }
 
           if (failBuildInCaseOfConflict) {
-              LOG.error(msgBuilder.toString());
+              throw new MojoFailureException(msgBuilder.toString());
           }
           else {
               LOG.warn(msgBuilder.toString());
           }
       }
-
 
 }

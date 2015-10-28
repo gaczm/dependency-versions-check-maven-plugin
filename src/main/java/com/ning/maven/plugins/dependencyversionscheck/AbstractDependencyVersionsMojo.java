@@ -155,6 +155,12 @@ public abstract class AbstractDependencyVersionsMojo extends AbstractMojo
     protected VersionCheckExcludes[] exceptions;
 
     /**
+     * A set of artifacts that should be included in dependency list
+     * @parameter alias="includeArtifacts"
+     */
+    protected String[] includeArtifacts;
+
+    /**
      * Skip the plugin execution.
      *
      * <pre>
@@ -487,6 +493,11 @@ public abstract class AbstractDependencyVersionsMojo extends AbstractMojo
      */
     private void addToResolutionMap(final Map resolutionMap, final VersionResolution resolution)
     {
+        if (!satisfiesFilters(resolution)) 
+        {
+            return;
+        }
+        
         List resolutions = (List) resolutionMap.get(resolution.getDependencyName());
         if (resolutions == null) {
             resolutions = new ArrayList();
@@ -504,6 +515,23 @@ public abstract class AbstractDependencyVersionsMojo extends AbstractMojo
         }
         LOG.debug("Adding resolution: {}", resolution);
         resolutions.add(resolution);
+    }
+    
+    private boolean satisfiesFilters(VersionResolution resolution) 
+    {
+        List<DependencyFilter> filters = filters();
+        if (filters.isEmpty()) {
+            return true;
+        }
+        
+        for (DependencyFilter filter : filters) {
+            if (filter.apply(resolution)) {
+                LOG.debug("Dependency {} satisfies filter, adding to resolution map");
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -733,7 +761,7 @@ public abstract class AbstractDependencyVersionsMojo extends AbstractMojo
      */
     private Set resolveDependenciesInItsOwnScope(final Artifact artifact, final ArtifactFilter filter) throws InvalidDependencyVersionException, ArtifactResolutionException, ArtifactNotFoundException, ProjectBuildingException
     {
-        MavenProject projectForArtifact = mavenProjectBuilder.buildFromRepository(artifact, remoteRepositories,localRepository);
+        MavenProject projectForArtifact = mavenProjectBuilder.buildFromRepository(artifact, remoteRepositories, localRepository);
 
         // "false" == do not include any optional dependencies from here. As these dependencies are off an artifact that is already a dependency, this
         //            needs to ignore all optional deps. This avoids downloading poms that might not even exist and should not be part of the dependency
@@ -814,5 +842,16 @@ public abstract class AbstractDependencyVersionsMojo extends AbstractMojo
             LOG.warn("Could not find artifact '{}'", getQualifiedName(ex.getArtifact()));
         }
         LOG.debug("Error:", ex);
+    }
+    
+    public List<DependencyFilter> filters() {
+        if (includeArtifacts == null || includeArtifacts.length == 0) {
+            return Collections.emptyList();
+        }
+        List<DependencyFilter> filters = new ArrayList<DependencyFilter>(includeArtifacts.length);
+        for (String includeArtifact : includeArtifacts) {
+            filters.add(new DependencyFilter(includeArtifact));
+        }
+        return filters;
     }
 }
